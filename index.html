@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Servidor de Pedido para Puesto de Comida - CBTIS 116</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Poppins & Nunito para tipografía moderna y amigable -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Poppins:ital,wght@0,400;0,600;0,700;0,800;1,700;1,800&display=swap" rel="stylesheet">
+    <!-- Font Awesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Nunito', 'sans-serif'],
+                        heading: ['Poppins', 'sans-serif'],
+                    },
+                    colors: {
+                        skyMockup: '#4cc2f1',
+                        skyDark: '#2ba8db',
+                        badgeRed: '#e14b32',
+                        flowerPink: '#ff66b2',
+                        flowerYellow: '#ffcc00',
+                    },
+                    boxShadow: {
+                        'mockup': '0 8px 0px rgba(15, 23, 42, 0.15)',
+                        'mockup-hover': '0 4px 0px rgba(15, 23, 42, 0.2)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Estilos personalizados para mantener fidelidad estética y animaciones suaves */
+        body {
+            background-color: #4cc2f1;
+            overflow-x: hidden;
+        }
+
+        .dashed-panel {
+            border: 4px dashed #0f172a;
+            border-radius: 1.5rem;
+        }
+
+        .mockup-btn {
+            transition: all 0.15s ease;
+        }
+        .mockup-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0px rgba(15, 23, 42, 0.2);
+        }
+
+        /* Animación flotante para elementos decorativos */
+        @keyframes floatSlow {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-6px) rotate(2deg); }
+        }
+        .animate-float {
+            animation: floatSlow 4s ease-in-out infinite;
+        }
+
+        /* Scrollbar estilizada */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #38bdf8;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #0f172a;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between text-slate-900 relative selection:bg-slate-900 selection:text-white">
+
+    <!-- Elemento decorativo: Flor en la esquina izquierda inspirada en el boceto -->
+    <div class="fixed -left-16 top-1/3 pointer-events-none opacity-85 z-0 hidden sm:block" aria-hidden="true">
+        <svg width="240" height="240" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="60" cy="65" rx="45" ry="65" transform="rotate(-25 60 65)" fill="#ff66b2"/>
+            <ellipse cx="115" cy="95" rx="65" ry="45" transform="rotate(15 115 95)" fill="#ff52a8"/>
+            <ellipse cx="75" cy="140" rx="55" ry="45" transform="rotate(-10 75 140)" fill="#ff77bc"/>
+            <circle cx="45" cy="125" r="38" fill="#ffcc00"/>
+        </svg>
+    </div>
+
+    <!-- Contenedor Principal -->
+    <div class="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-6 pt-6 pb-12 flex-grow">
+
+        <!-- ENCABEZADO (Header inspirado exactamente en la Página 2 del PDF) -->
+        <header class="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
+            <div class="text-center md:text-left">
+                <span class="inline-block bg-slate-900 text-white text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-2">
+                    CBTIS 116 • Tijuana, B.C.
+                </span>
+                <h1 class="font-heading font-extrabold italic text-2xl sm:text-4xl lg:text-[2.6rem] text-slate-950 tracking-tight leading-tight drop-shadow-sm">
+                    Servidor de pedido para puesto de comida
+                </h1>
+            </div>
+
+            <!-- Insignia Roja: PEDIR COMIDA A DOMICILIO -->
+            <button onclick="openDeliveryBadgeAction()" class="group bg-badgeRed hover:bg-red-600 text-white p-3.5 rounded-2xl shadow-lg border-2 border-slate-900 flex flex-col items-center justify-center min-w-[140px] transition-transform hover:scale-105 cursor-pointer" title="Hacer pedido a domicilio">
+                <i class="fa-solid fa-motorcycle text-2xl sm:text-3xl mb-1 group-hover:translate-x-1 transition-transform"></i>
+                <span class="font-heading font-extrabold text-[11px] leading-tight text-center uppercase tracking-wide">
+                    PEDIR COMIDA<br>A DOMICILIO
+                </span>
+            </button>
+        </header>
+
+        <!-- PANEL CENTRAL DE NAVEGACIÓN (Recuadro punteado estilo mockup) -->
+        <section aria-label="Panel Principal de Control" class="dashed-panel bg-sky-300/40 backdrop-blur-xs p-5 sm:p-8 mb-10 relative">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                
+                <!-- Columna de Botones Principales -->
+                <div class="lg:col-span-8 flex flex-col gap-4">
+                    <!-- Botón 1: ORDENES -->
+                    <button onclick="toggleOrdersDrawer(true)" class="mockup-btn w-full bg-white hover:bg-slate-50 text-slate-950 font-heading font-black text-xl sm:text-2xl py-4 px-6 rounded-full shadow-mockup border-2 border-slate-900 flex items-center justify-between group cursor-pointer">
+                        <span class="w-8"></span>
+                        <span class="tracking-wide">ORDENES</span>
+                        <span id="header-cart-badge" class="bg-badgeRed text-white text-sm font-extrabold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-xs">
+                            <i class="fa-solid fa-bag-shopping"></i>
+                            <span id="cart-count">0</span>
+                        </span>
+                    </button>
+
+                    <!-- Botón 2: SELECCIONAR MENU -->
+                    <button onclick="scrollToMenu()" class="mockup-btn w-full bg-white hover:bg-slate-50 text-slate-950 font-heading font-black text-xl sm:text-2xl py-4 px-6 rounded-full shadow-mockup border-2 border-slate-900 flex items-center justify-center gap-3 cursor-pointer">
+                        <i class="fa-solid fa-utensils text-skyDark text-lg sm:text-xl"></i>
+                        <span class="tracking-wide">SELECCIONAR MENU</span>
+                    </button>
+
+                    <!-- Fila de Botones Secundarios: HORARIOS y AYUDA CON SOPORTE -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-1">
+                        <button onclick="openModal('modal-horarios')" class="mockup-btn bg-white hover:bg-slate-50 text-slate-950 font-heading font-extrabold text-base sm:text-lg py-3.5 px-5 rounded-2xl shadow-mockup border-2 border-slate-900 flex items-center justify-center gap-2.5 cursor-pointer">
+                            <i class="fa-regular fa-clock text-skyDark text-xl"></i>
+                            <span>HORARIOS</span>
+                        </button>
+
+                        <button onclick="openModal('modal-soporte')" class="mockup-btn bg-white hover:bg-slate-50 text-slate-950 font-heading font-extrabold text-base sm:text-lg py-3.5 px-5 rounded-2xl shadow-mockup border-2 border-slate-900 flex items-center justify-center gap-2.5 leading-tight cursor-pointer">
+                            <i class="fa-solid fa-headset text-badgeRed text-xl"></i>
+                            <span>AYUDA CON SOPORTE</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Columna Decorativa: Cursor Pixelado + Smartphone Interactivo -->
+                <div class="lg:col-span-4 flex flex-col items-center justify-center relative">
+                    <div class="flex items-center justify-center gap-3">
+                        <!-- Cursor estilo pixel art del mockup -->
+                        <svg class="w-12 h-12 sm:w-14 sm:h-14 animate-float drop-shadow-md hidden sm:block" viewBox="0 0 24 24" fill="white" stroke="#0f172a" stroke-width="1.8">
+                            <path d="M4 2L20 12L12 14L15 21L12 22L9 15L4 19V2Z"/>
+                        </svg>
+
+                        <!-- Smartphone visual con resumen rápido -->
+                        <div onclick="toggleOrdersDrawer(true)" class="cursor-pointer group relative w-36 sm:w-40 h-60 bg-slate-800 rounded-[2rem] p-2 shadow-xl border-2 border-slate-950 transform rotate-3 hover:rotate-0 transition-transform">
+                            <!-- Notch -->
+                            <div class="w-14 h-3 bg-slate-900 rounded-full mx-auto mb-1"></div>
+                            <!-- Pantalla -->
+                            <div class="w-full h-[calc(100%-16px)] bg-gradient-to-b from-sky-300 to-sky-400 rounded-[1.4rem] p-3 flex flex-col justify-between items-center text-center overflow-hidden">
+                                <span class="text-[10px] font-extrabold uppercase bg-white/90 text-slate-900 px-2 py-0.5 rounded-full">
+                                    App Pedido
+                                </span>
+                                <div class="my-auto">
+                                    <i class="fa-solid fa-burger text-3xl text-slate-900 mb-1"></i>
+                                    <p class="text-xs font-extrabold text-slate-950 leading-tight">Tu Orden Activa</p>
+                                    <p id="phone-total-preview" class="text-sm font-black text-white bg-slate-900 px-2.5 py-0.5 rounded-lg mt-1">$0 MXN</p>
+                                </div>
+                                <span class="text-[10px] font-bold text-slate-900 underline group-hover:text-white">Tocar para ver</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Nombres de integrantes en el panel tal como en el mockup -->
+                    <div class="mt-4 text-center text-xs sm:text-sm font-bold text-slate-900/90 leading-snug">
+                        <p>Roblero Sánchez Kevin</p>
+                        <p>Pérez Rivera Kevin Salvador</p>
+                        <p>Pérez Torres Ángel Geovani</p>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- SECCIÓN: MENU DISPONIBLE -->
+        <section id="seccion-menu" class="scroll-mt-6">
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                <div class="bg-white border-2 border-slate-900 shadow-mockup px-6 py-2.5 rounded-xl inline-flex items-center gap-3">
+                    <i class="fa-solid fa-fire-flame-curved text-badgeRed text-xl"></i>
+                    <h2 class="font-heading font-black text-xl sm:text-2xl tracking-wide text-slate-950 uppercase">
+                        MENU DISPONIBLE
+                    </h2>
+                </div>
+
+                <button onclick="toggleOrdersDrawer(true)" class="bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm px-4 py-2.5 rounded-xl shadow-md flex items-center gap-2 transition cursor-pointer">
+                    <span>Ver mi carrito</span>
+                    <span id="menu-bar-total" class="bg-skyMockup text-slate-950 font-black px-2 py-0.5 rounded-md">$0</span>
+                </button>
+            </div>
+
+            <!-- Grid de los 3 Platillos Exactos del Documento -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+                
+                <!-- Platillo 1: PIZZA DE PEPERONI -->
+                <article class="bg-white rounded-3xl border-2 border-slate-900 shadow-mockup overflow-hidden flex flex-col justify-between transition-transform hover:-translate-y-1">
+                    <div>
+                        <!-- Encabezado estilo cápsula del mockup -->
+                        <div class="p-4 text-center border-b-2 border-dashed border-slate-200">
+                            <h3 class="font-heading font-black text-lg sm:text-xl text-slate-950 uppercase">
+                                PIZZA DE PEPERONI
+                            </h3>
+                            <p class="font-sans font-extrabold text-xl text-badgeRed mt-0.5">
+                                $250 pesos
+                            </p>
+                        </div>
+
+                        <!-- Imagen con fallback -->
+                        <div class="relative h-48 w-full bg-slate-100 overflow-hidden group">
+                            <img 
+                                src="https://images.unsplash.com/photo-1628840042765-356cda07504e?auto=format&fit=crop&w=800&q=80" 
+                                alt="Pizza de Peperoni recién horneada"
+                                onerror="this.onerror=null; this.src='https://placehold.co/600x400/e14b32/ffffff?text=Pizza+de+Peperoni';"
+                                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            >
+                            <span class="absolute top-3 right-3 bg-slate-900/85 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                                Familiar • 8 Rebanadas
+                            </span>
+                        </div>
+
+                        <div class="p-4 pb-2">
+                            <p class="text-sm text-slate-600 font-semibold">
+                                Masa crujiente artesanal, salsa de tomate especiada, extra queso mozzarella fundido y abundante peperoni dorado.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="p-4 pt-2">
+                        <button onclick="addToCart('pizza', 'Pizza de Peperoni', 250)" class="mockup-btn w-full bg-skyMockup hover:bg-skyDark text-slate-950 font-heading font-extrabold py-3 px-4 rounded-2xl border-2 border-slate-900 flex items-center justify-center gap-2 cursor-pointer">
+                            <i class="fa-solid fa-cart-plus"></i>
+                            <span>Agregar a la Orden</span>
+                        </button>
+                    </div>
+                </article>
+
+                <!-- Platillo 2: SUSHI EMPANIZADO -->
+                <article class="bg-white rounded-3xl border-2 border-slate-900 shadow-mockup overflow-hidden flex flex-col justify-between transition-transform hover:-translate-y-1">
+                    <div>
+                        <div class="p-4 text-center border-b-2 border-dashed border-slate-200">
+                            <h3 class="font-heading font-black text-lg sm:text-xl text-slate-950 uppercase">
+                                SUSHI EMPANIZADO
+                            </h3>
+                            <p class="font-sans font-extrabold text-xl text-badgeRed mt-0.5">
+                                $110 pesos
+                            </p>
+                        </div>
+
+                        <div class="relative h-48 w-full bg-slate-100 overflow-hidden group">
+                            <img 
+                                src="https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=800&q=80" 
+                                alt="Rollo de Sushi Empanizado"
+                                onerror="this.onerror=null; this.src='https://placehold.co/600x400/0f172a/ffffff?text=Sushi+Empanizado';"
+                                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            >
+                            <span class="absolute top-3 right-3 bg-slate-900/85 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                                10 Piezas + Soya
+                            </span>
+                        </div>
+
+                        <div class="p-4 pb-2">
+                            <p class="text-sm text-slate-600 font-semibold">
+                                Rollo crujiente por fuera relleno de queso crema, aguacate fresco y surimi, acompañado de salsa de soya y tampico.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="p-4 pt-2">
+                        <button onclick="addToCart('sushi', 'Sushi Empanizado', 110)" class="mockup-btn w-full bg-skyMockup hover:bg-skyDark text-slate-950 font-heading font-extrabold py-3 px-4 rounded-2xl border-2 border-slate-900 flex items-center justify-center gap-2 cursor-pointer">
+                            <i class="fa-solid fa-cart-plus"></i>
+                            <span>Agregar a la Orden</span>
+                        </button>
+                    </div>
+                </article>
+
+                <!-- Platillo 3: POLLO EMPANIZADO -->
+                <article class="bg-white rounded-3xl border-2 border-slate-900 shadow-mockup overflow-hidden flex flex-col justify-between transition-transform hover:-translate-y-1">
+                    <div>
+                        <div class="p-4 text-center border-b-2 border-dashed border-slate-200">
+                            <h3 class="font-heading font-black text-lg sm:text-xl text-slate-950 uppercase">
+                                POLLO EMPANIZADO
+                            </h3>
+                            <p class="font-sans font-extrabold text-xl text-badgeRed mt-0.5">
+                                $170 pesos
+                            </p>
+                        </div>
+
+                        <div class="relative h-48 w-full bg-slate-100 overflow-hidden group">
+                            <img 
+                                src="https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?auto=format&fit=crop&w=800&q=80" 
+                                alt="Piezas de Pollo Empanizado Crujiente"
+                                onerror="this.onerror=null; this.src='https://placehold.co/600x400/eab308/0f172a?text=Pollo+Empanizado';"
+                                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            >
+                            <span class="absolute top-3 right-3 bg-slate-900/85 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                                Orden Crujiente
+                            </span>
+                        </div>
+
+                        <div class="p-4 pb-2">
+                            <p class="text-sm text-slate-600 font-semibold">
+                                Piezas de pollo jugoso marinadas con especias de la casa y empanizado extra crujiente, incluye aderezo ranch.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="p-4 pt-2">
+                        <button onclick="addToCart('pollo', 'Pollo Empanizado', 170)" class="mockup-btn w-full bg-skyMockup hover:bg-skyDark text-slate-950 font-heading font-extrabold py-3 px-4 rounded-2xl border-2 border-slate-900 flex items-center justify-center gap-2 cursor-pointer">
+                            <i class="fa-solid fa-cart-plus"></i>
+                            <span>Agregar a la Orden</span>
+                        </button>
+                    </div>
+                </article>
+
+            </div>
+        </section>
+
+        <!-- BANNER DE DOMICILIO RÁPIDO (Inspirado en la parte inferior del mockup) -->
+        <section class="mt-10 bg-white rounded-3xl border-2 border-slate-900 shadow-mockup p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-skyMockup border-2 border-slate-900 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-location-dot text-2xl text-slate-950"></i>
+                </div>
+                <div>
+                    <span class="text-xs font-black uppercase tracking-wider text-slate-500 block">DOMICILIO DEL PUESTO</span>
+                    <p class="font-heading font-extrabold text-base sm:text-lg text-slate-950">
+                        Calle 5ta Obrera, Colonia Zona Este #22566
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button onclick="copyAddress()" class="bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold text-sm px-4 py-2.5 rounded-xl border border-slate-300 flex items-center gap-2 transition cursor-pointer">
+                    <i class="fa-regular fa-copy"></i>
+                    <span>Copiar dirección</span>
+                </button>
+                <!-- Icono laptop decorativo del mockup -->
+                <div class="hidden md:flex items-center justify-center text-slate-900 text-3xl pl-2" title="Sistema Web Activo">
+                    <i class="fa-solid fa-laptop-code"></i>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- PIE DE PÁGINA (FOOTER CON CRÉDITOS ACADÉMICOS Y DOMICILIO) -->
+    <footer class="relative z-10 bg-slate-950 text-white border-t-4 border-slate-900 mt-auto">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                <!-- Columna 1: Institución y Materia -->
+                <div>
+                    <div class="flex items-center gap-3 mb-2">
+                        <span class="bg-skyMockup text-slate-950 font-heading font-black text-xs px-2.5 py-1 rounded-md">
+                            CBTIS 116
+                        </span>
+                        <span class="font-heading font-bold text-sm text-sky-300">
+                            "General Vicente Guerrero" • Tijuana, B.C.
+                        </span>
+                    </div>
+                    <p class="text-sm text-slate-300 font-semibold">
+                        Implementa Aplicaciones Web (Semestre 5) • Interface Visual Proyecto 2do Parcial
+                    </p>
+                    <p class="text-sm text-slate-400 mt-1">
+                        <strong class="text-white">Docente:</strong> Elda Marín Garibaldi
+                    </p>
+                    <p class="text-sm text-amber-300 font-semibold mt-3 flex items-center gap-2">
+                        <i class="fa-solid fa-map-pin"></i>
+                        <span>Domicilio: Calle 5ta Obrera, Colonia Zona Este #22566</span>
+                    </p>
+                </div>
+
+                <!-- Columna 2: Alumnos Integrantes -->
+                <div class="bg-slate-900/90 p-4 rounded-2xl border border-slate-800">
+                    <h3 class="font-heading font-bold text-xs uppercase tracking-wider text-skyMockup mb-2">
+                        Equipo Desarrollador (Alumnos)
+                    </h3>
+                    <ul class="text-sm text-slate-200 space-y-1 font-medium">
+                        <li class="flex items-center gap-2">
+                            <i class="fa-solid fa-user-graduate text-skyMockup text-xs"></i>
+                            <span>Pérez Rivera Kevin Salvador</span>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <i class="fa-solid fa-user-graduate text-skyMockup text-xs"></i>
+                            <span>Roblero Sánchez Kevin</span>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <i class="fa-solid fa-user-graduate text-skyMockup text-xs"></i>
+                            <span>Pérez Torres Ángel Geovani</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ===================================================================== -->
+    <!-- PANEL DESLIZABLE DE ÓRDENES (CARRITO / RESUMEN Y TICKET DE PEDIDO)     -->
+    <!-- ===================================================================== -->
+    <div id="orders-drawer-backdrop" onclick="toggleOrdersDrawer(false)" class="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-40 hidden transition-opacity"></div>
+
+    <aside id="orders-drawer" aria-label="Panel de Órdenes" class="fixed top-0 right-0 h-full w-full max-w-md bg-white z-50 shadow-2xl border-l-4 border-slate-900 transform translate-x-full transition-transform duration-300 flex flex-col">
+        <!-- Header del Drawer -->
+        <div class="bg-skyMockup p-5 border-b-2 border-slate-900 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <i class="fa-solid fa-receipt text-2xl text-slate-950"></i>
+                <h2 class="font-heading font-black text-xl text-slate-950 uppercase">Tus Órdenes</h2>
+            </div>
+            <button onclick="toggleOrdersDrawer(false)" class="w-9 h-9 rounded-full bg-white border-2 border-slate-900 flex items-center justify-center hover:bg-slate-100 cursor-pointer" aria-label="Cerrar panel de órdenes">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Tabs: Carrito Actual vs Orden Activa (Ticket) -->
+        <div class="grid grid-cols-2 border-b-2 border-slate-200 bg-slate-50 font-heading font-bold text-sm">
+            <button id="tab-btn-cart" onclick="switchOrderTab('cart')" class="py-3 border-b-4 border-skyDark text-slate-950 bg-white cursor-pointer">
+                Pedido Actual (<span id="tab-cart-count">0</span>)
+            </button>
+            <button id="tab-btn-ticket" onclick="switchOrderTab('ticket')" class="py-3 border-b-4 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer">
+                Ticket Activo <span id="ticket-dot" class="hidden inline-block w-2 h-2 rounded-full bg-emerald-500 ml-1"></span>
+            </button>
+        </div>
+
+        <!-- VISTA 1: CARRITO DE COMPRAS -->
+        <div id="view-cart" class="flex-1 overflow-y-auto p-5 flex flex-col justify-between">
+            <div id="cart-items-container" class="space-y-3">
+                <!-- Se llena dinámicamente con JS -->
+            </div>
+
+            <!-- Formulario de entrega y resumen -->
+            <div id="cart-checkout-section" class="mt-6 pt-4 border-t-2 border-dashed border-slate-300 hidden">
+                <!-- Tipo de entrega -->
+                <label class="block font-heading font-bold text-xs uppercase text-slate-600 mb-2">
+                    Modalidad de Entrega
+                </label>
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <button type="button" id="btn-mode-pickup" onclick="setDeliveryMode('pickup')" class="py-2.5 px-3 rounded-xl border-2 border-slate-900 bg-skyMockup font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer">
+                        <i class="fa-solid fa-store"></i>
+                        <span>Recoger en puesto</span>
+                    </button>
+                    <button type="button" id="btn-mode-delivery" onclick="setDeliveryMode('delivery')" class="py-2.5 px-3 rounded-xl border-2 border-slate-300 bg-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer">
+                        <i class="fa-solid fa-motorcycle"></i>
+                        <span>A domicilio</span>
+                    </button>
+                </div>
+
+                <!-- Info dinámica según modalidad -->
+                <div id="delivery-address-box" class="bg-sky-50 border border-sky-200 rounded-xl p-3 mb-4 text-xs">
+                    <p class="font-bold text-slate-800 flex items-center gap-1.5">
+                        <i class="fa-solid fa-location-dot text-badgeRed"></i>
+                        <span id="delivery-label">Punto de recolección del puesto:</span>
+                    </p>
+                    <p class="text-slate-700 font-semibold mt-0.5">Calle 5ta Obrera, Colonia Zona Este #22566</p>
+                    <input id="customer-destination" type="text" placeholder="Ingresa tu calle y número de casa..." class="hidden mt-2 w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 font-semibold focus:outline-none focus:border-slate-900">
+                </div>
+
+                <!-- Nombre del cliente -->
+                <div class="mb-4">
+                    <label for="customer-name" class="block font-heading font-bold text-xs uppercase text-slate-600 mb-1">
+                        Tu Nombre
+                    </label>
+                    <input id="customer-name" type="text" placeholder="Ej. Kevin Pérez" class="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-300 focus:border-slate-900 focus:outline-none font-semibold text-sm">
+                </div>
+
+                <!-- Total -->
+                <div class="bg-slate-900 text-white p-4 rounded-2xl mb-4 flex items-center justify-between">
+                    <div>
+                        <span class="text-xs text-slate-400 uppercase font-bold block">Total a Pagar</span>
+                        <span id="delivery-fee-note" class="text-[11px] text-skyMockup">Envío gratis zona local</span>
+                    </div>
+                    <span id="cart-total-price" class="font-heading font-black text-2xl text-white">$0 pesos</span>
+                </div>
+
+                <!-- Botón Confirmar Pedido -->
+                <button onclick="confirmOrder()" class="mockup-btn w-full bg-badgeRed hover:bg-red-600 text-white font-heading font-black text-base py-3.5 px-5 rounded-2xl border-2 border-slate-900 shadow-mockup flex items-center justify-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-check-circle"></i>
+                    <span>CONFIRMAR PEDIDO</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- VISTA 2: TICKET DE ORDEN ACTIVA -->
+        <div id="view-ticket" class="flex-1 overflow-y-auto p-5 hidden">
+            <div id="active-ticket-content" class="text-center py-10 text-slate-500">
+                <i class="fa-solid fa-receipt text-4xl mb-3 text-slate-300"></i>
+                <p class="font-bold">Aún no tienes una orden confirmada.</p>
+                <p class="text-xs mt-1">Agrega platillos del menú y confirma tu pedido para generar tu ticket.</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 1: HORARIOS DE ATENCIÓN                                         -->
+    <!-- ===================================================================== -->
+    <div id="modal-horarios" class="fixed inset-0 bg-slate-950/65 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-3xl border-4 border-slate-900 shadow-2xl overflow-hidden animate-fadeIn">
+            <div class="bg-skyMockup p-5 border-b-2 border-slate-900 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <i class="fa-regular fa-clock text-2xl text-slate-950"></i>
+                    <h3 class="font-heading font-black text-xl text-slate-950 uppercase">Horarios de Atención</h3>
+                </div>
+                <button onclick="closeModal('modal-horarios')" class="w-8 h-8 rounded-full bg-white border-2 border-slate-900 flex items-center justify-center cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6">
+                <!-- Estado en tiempo real -->
+                <div id="store-status-banner" class="flex items-center justify-between bg-emerald-100 border-2 border-emerald-600 text-emerald-950 px-4 py-3 rounded-2xl mb-5">
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-3.5 h-3.5 rounded-full bg-emerald-500 animate-ping"></span>
+                        <span class="font-heading font-black text-sm uppercase">Abierto Ahora</span>
+                    </div>
+                    <span class="text-xs font-extrabold bg-white px-2.5 py-1 rounded-lg border border-emerald-300">
+                        Servicio Activo
+                    </span>
+                </div>
+
+                <!-- Tabla de horarios -->
+                <div class="space-y-2.5 text-sm font-bold text-slate-800">
+                    <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <span>Lunes a Viernes</span>
+                        <span class="text-skyDark font-extrabold">12:00 PM - 10:00 PM</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <span>Sábados y Domingos</span>
+                        <span class="text-skyDark font-extrabold">1:00 PM - 11:00 PM</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-amber-50 rounded-xl border border-amber-200">
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-motorcycle text-badgeRed"></i> Servicio a Domicilio</span>
+                        <span class="text-slate-900 font-extrabold">Hasta 30 min antes del cierre</span>
+                    </div>
+                </div>
+
+                <div class="mt-5 pt-4 border-t border-slate-200 text-xs text-slate-600 flex items-start gap-2">
+                    <i class="fa-solid fa-location-dot text-badgeRed mt-0.5"></i>
+                    <span><strong>Ubicación:</strong> Calle 5ta Obrera, Colonia Zona Este #22566, Tijuana, B.C.</span>
+                </div>
+
+                <button onclick="closeModal('modal-horarios')" class="mockup-btn mt-5 w-full bg-slate-900 text-white font-heading font-bold py-3 rounded-2xl cursor-pointer">
+                    Entendido
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 2: AYUDA CON SOPORTE                                            -->
+    <!-- ===================================================================== -->
+    <div id="modal-soporte" class="fixed inset-0 bg-slate-950/65 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-3xl border-4 border-slate-900 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div class="bg-skyMockup p-5 border-b-2 border-slate-900 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <i class="fa-solid fa-headset text-2xl text-slate-950"></i>
+                    <h3 class="font-heading font-black text-xl text-slate-950 uppercase">Ayuda con Soporte</h3>
+                </div>
+                <button onclick="closeModal('modal-soporte')" class="w-8 h-8 rounded-full bg-white border-2 border-slate-900 flex items-center justify-center cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto space-y-5">
+                <!-- Preguntas Frecuentes -->
+                <div>
+                    <h4 class="font-heading font-extrabold text-sm uppercase text-slate-500 mb-2.5">Preguntas Frecuentes</h4>
+                    <div class="space-y-2">
+                        <details class="bg-slate-50 border border-slate-200 rounded-xl p-3 cursor-pointer">
+                            <summary class="font-bold text-sm text-slate-900">¿Cuánto tarda mi pedido en estar listo?</summary>
+                            <p class="text-xs text-slate-600 mt-2 leading-relaxed">
+                                Para recoger en el puesto (Calle 5ta Obrera #22566) tarda entre 15 y 20 minutos. Para envío a domicilio en Zona Este tarda de 25 a 40 minutos.
+                            </p>
+                        </details>
+                        <details class="bg-slate-50 border border-slate-200 rounded-xl p-3 cursor-pointer">
+                            <summary class="font-bold text-sm text-slate-900">¿Cuáles son los métodos de pago?</summary>
+                            <p class="text-xs text-slate-600 mt-2 leading-relaxed">
+                                Aceptamos pago en efectivo al recibir tu orden o transferencia bancaria directa al mostrar tu número de ticket.
+                            </p>
+                        </details>
+                    </div>
+                </div>
+
+                <!-- Contacto Directo / Reporte Rápido -->
+                <form onsubmit="submitSupportTicket(event)" class="bg-sky-50 border-2 border-sky-200 rounded-2xl p-4 space-y-3">
+                    <h4 class="font-heading font-extrabold text-sm text-slate-950 flex items-center gap-2">
+                        <i class="fa-solid fa-comment-medical text-badgeRed"></i>
+                        <span>¿Tienes algún problema con tu orden?</span>
+                    </h4>
+                    <input id="support-name" type="text" required placeholder="Tu nombre o # de ticket" class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm font-semibold">
+                    <textarea id="support-msg" rows="2" required placeholder="Describe brevemente cómo podemos ayudarte..." class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm font-semibold"></textarea>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <button type="submit" class="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 px-4 rounded-xl cursor-pointer">
+                            Enviar Mensaje al Puesto
+                        </button>
+                        <button type="button" onclick="simulateWhatsApp()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer">
+                            <i class="fa-brands fa-whatsapp text-base"></i>
+                            <span>Chat Rápido</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST DE NOTIFICACIÓN PERSONALIZADO (En lugar de alert()) -->
+    <div id="toast-container" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 pointer-events-none w-max max-w-[92vw]"></div>
+
+    <!-- ===================================================================== -->
+    <!-- LÓGICA JAVASCRIPT DE LA APLICACIÓN                                    -->
+    <!-- ===================================================================== -->
+    <script>
+        // Estado global del carrito y la orden activa
+        let cart = [];
+        let deliveryMode = 'pickup'; // 'pickup' | 'delivery'
+        let activeOrder = null;
+
+        /**
+         * Agrega un producto al carrito o incrementa su cantidad
+         */
+        function addToCart(id, name, price) {
+            const existingItem = cart.find(item => item.id === id);
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                cart.push({ id, name, price, quantity: 1 });
+            }
+            updateCartUI();
+            showToast(`¡${name} agregado a tu orden!`, 'success');
+        }
+
+        /**
+         * Modifica la cantidad de un producto (+1 o -1)
+         */
+        function changeQuantity(id, delta) {
+            const index = cart.findIndex(item => item.id === id);
+            if (index === -1) return;
+
+            cart[index].quantity += delta;
+            if (cart[index].quantity <= 0) {
+                cart.splice(index, 1);
+            }
+            updateCartUI();
+        }
+
+        /**
+         * Actualiza todos los contadores, totales y la lista del carrito
+         */
+        function updateCartUI() {
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+            // Actualizar badges en el encabezado, smartphone y barra de menú
+            document.getElementById('cart-count').textContent = totalItems;
+            document.getElementById('tab-cart-count').textContent = totalItems;
+            document.getElementById('phone-total-preview').textContent = `$${totalPrice} MXN`;
+            document.getElementById('menu-bar-total').textContent = `$${totalPrice}`;
+            document.getElementById('cart-total-price').textContent = `$${totalPrice} pesos`;
+
+            const container = document.getElementById('cart-items-container');
+            const checkoutSection = document.getElementById('cart-checkout-section');
+
+            if (cart.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-10 text-slate-500">
+                        <i class="fa-solid fa-basket-shopping text-4xl mb-3 text-slate-300"></i>
+                        <p class="font-bold text-slate-700">Tu carrito está vacío</p>
+                        <p class="text-xs mt-1">Selecciona platillos del menú disponible para iniciar tu pedido.</p>
+                        <button onclick="toggleOrdersDrawer(false); scrollToMenu();" class="mt-4 bg-skyMockup text-slate-950 font-extrabold text-xs px-4 py-2 rounded-xl border-2 border-slate-900 cursor-pointer">
+                            Ir al Menú
+                        </button>
+                    </div>
+                `;
+                checkoutSection.classList.add('hidden');
+                return;
+            }
+
+            checkoutSection.classList.remove('hidden');
+            container.innerHTML = cart.map(item => `
+                <div class="flex items-center justify-between bg-slate-50 p-3.5 rounded-2xl border-2 border-slate-200">
+                    <div>
+                        <h4 class="font-heading font-extrabold text-sm text-slate-950">${item.name}</h4>
+                        <p class="text-xs font-bold text-badgeRed">$${item.price} c/u • Subtotal: $${item.price * item.quantity}</p>
+                    </div>
+                    <div class="flex items-center gap-2 bg-white border-2 border-slate-900 rounded-xl px-2 py-1">
+                        <button onclick="changeQuantity('${item.id}', -1)" class="w-6 h-6 flex items-center justify-center font-black text-slate-900 hover:bg-slate-100 rounded cursor-pointer" aria-label="Disminuir cantidad">-</button>
+                        <span class="font-heading font-black text-sm w-5 text-center">${item.quantity}</span>
+                        <button onclick="changeQuantity('${item.id}', 1)" class="w-6 h-6 flex items-center justify-center font-black text-slate-900 hover:bg-slate-100 rounded cursor-pointer" aria-label="Aumentar cantidad">+</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        /**
+         * Cambia entre recoger en el puesto o envío a domicilio
+         */
+        function setDeliveryMode(mode) {
+            deliveryMode = mode;
+            const btnPickup = document.getElementById('btn-mode-pickup');
+            const btnDelivery = document.getElementById('btn-mode-delivery');
+            const label = document.getElementById('delivery-label');
+            const inputDest = document.getElementById('customer-destination');
+            const feeNote = document.getElementById('delivery-fee-note');
+
+            if (mode === 'pickup') {
+                btnPickup.className = "py-2.5 px-3 rounded-xl border-2 border-slate-900 bg-skyMockup font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer";
+                btnDelivery.className = "py-2.5 px-3 rounded-xl border-2 border-slate-300 bg-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer";
+                label.textContent = "Recoger en el puesto:";
+                inputDest.classList.add('hidden');
+                feeNote.textContent = "Listo en 15-20 mins en mostrador";
+            } else {
+                btnDelivery.className = "py-2.5 px-3 rounded-xl border-2 border-slate-900 bg-skyMockup font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer";
+                btnPickup.className = "py-2.5 px-3 rounded-xl border-2 border-slate-300 bg-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer";
+                label.textContent = "Salida desde el puesto:";
+                inputDest.classList.remove('hidden');
+                feeNote.textContent = "Envío a domicilio sin costo extra";
+            }
+        }
+
+        /**
+         * Acción rápida desde la insignia roja superior "PEDIR COMIDA A DOMICILIO"
+         */
+        function openDeliveryBadgeAction() {
+            setDeliveryMode('delivery');
+            if (cart.length === 0) {
+                scrollToMenu();
+                showToast('Modo a domicilio activado. ¡Elige tus platillos!', 'info');
+            } else {
+                toggleOrdersDrawer(true);
+            }
+        }
+
+        /**
+         * Confirma el pedido y genera el ticket activo
+         */
+        function confirmOrder() {
+            if (cart.length === 0) return;
+
+            const nameInput = document.getElementById('customer-name').value.trim();
+            const destInput = document.getElementById('customer-destination').value.trim();
+
+            if (!nameInput) {
+                showToast('Por favor escribe tu nombre para identificar tu orden.', 'warning');
+                document.getElementById('customer-name').focus();
+                return;
+            }
+
+            if (deliveryMode === 'delivery' && !destInput) {
+                showToast('Ingresa tu dirección para el envío a domicilio.', 'warning');
+                document.getElementById('customer-destination').focus();
+                return;
+            }
+
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const orderNumber = Math.floor(1000 + Math.random() * 9000);
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+
+            activeOrder = {
+                folio: `CBTIS-${orderNumber}`,
+                customer: nameInput,
+                mode: deliveryMode === 'delivery' ? 'Envío a Domicilio' : 'Recoger en Puesto',
+                destination: deliveryMode === 'delivery' ? destInput : 'Calle 5ta Obrera, Colonia Zona Este #22566',
+                items: [...cart],
+                total: total,
+                time: timeStr
+            };
+
+            // Limpiar carrito y renderizar ticket
+            cart = [];
+            updateCartUI();
+            renderActiveTicket();
+            document.getElementById('ticket-dot').classList.remove('hidden');
+            switchOrderTab('ticket');
+            showToast(`¡Orden #${activeOrder.folio} confirmada con éxito!`, 'success');
+        }
+
+        /**
+         * Renderiza el ticket visual de la orden activa
+         */
+        function renderActiveTicket() {
+            if (!activeOrder) return;
+
+            const container = document.getElementById('active-ticket-content');
+            container.innerHTML = `
+                <div class="bg-amber-50 border-2 border-dashed border-slate-900 rounded-2xl p-5 text-left shadow-md">
+                    <div class="flex items-center justify-between border-b-2 border-dashed border-slate-300 pb-3 mb-3">
+                        <div>
+                            <span class="text-[10px] font-black uppercase bg-emerald-600 text-white px-2 py-0.5 rounded-full">
+                                En Preparación
+                            </span>
+                            <h3 class="font-heading font-black text-lg text-slate-950 mt-1">Ticket #${activeOrder.folio}</h3>
+                        </div>
+                        <span class="text-xs font-bold text-slate-500">${activeOrder.time}</span>
+                    </div>
+
+                    <div class="space-y-1 text-xs mb-4">
+                        <p><strong>Cliente:</strong> ${activeOrder.customer}</p>
+                        <p><strong>Modalidad:</strong> ${activeOrder.mode}</p>
+                        <p><strong>Dirección:</strong> ${activeOrder.destination}</p>
+                    </div>
+
+                    <div class="border-t border-b border-slate-300 py-2.5 my-2.5 space-y-1.5">
+                        ${activeOrder.items.map(i => `
+                            <div class="flex justify-between text-xs font-bold">
+                                <span>${i.quantity}x ${i.name}</span>
+                                <span>$${i.price * i.quantity}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div class="flex justify-between items-center pt-1">
+                        <span class="font-heading font-extrabold text-sm">TOTAL PAGADO / A COBRAR</span>
+                        <span class="font-heading font-black text-xl text-badgeRed">$${activeOrder.total} pesos</span>
+                    </div>
+
+                    <p class="text-[11px] text-center text-slate-500 mt-4 pt-2 border-t border-slate-200">
+                        Puesto de Comida CBTIS 116 • Calle 5ta Obrera #22566
+                    </p>
+                </div>
+            `;
+        }
+
+        /**
+         * Alterna pestañas dentro del drawer de órdenes
+         */
+        function switchOrderTab(tab) {
+            const viewCart = document.getElementById('view-cart');
+            const viewTicket = document.getElementById('view-ticket');
+            const btnCart = document.getElementById('tab-btn-cart');
+            const btnTicket = document.getElementById('tab-btn-ticket');
+
+            if (tab === 'cart') {
+                viewCart.classList.remove('hidden');
+                viewTicket.classList.add('hidden');
+                btnCart.className = "py-3 border-b-4 border-skyDark text-slate-950 bg-white cursor-pointer";
+                btnTicket.className = "py-3 border-b-4 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer";
+            } else {
+                viewCart.classList.add('hidden');
+                viewTicket.classList.remove('hidden');
+                btnTicket.className = "py-3 border-b-4 border-skyDark text-slate-950 bg-white cursor-pointer";
+                btnCart.className = "py-3 border-b-4 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer";
+            }
+        }
+
+        /**
+         * Abre o cierra el panel deslizante de Órdenes
+         */
+        function toggleOrdersDrawer(open) {
+            const drawer = document.getElementById('orders-drawer');
+            const backdrop = document.getElementById('orders-drawer-backdrop');
+            if (open) {
+                drawer.classList.remove('translate-x-full');
+                backdrop.classList.remove('hidden');
+            } else {
+                drawer.classList.add('translate-x-full');
+                backdrop.classList.add('hidden');
+            }
+        }
+
+        /**
+         * Desplaza suavemente hacia la sección del menú disponible
+         */
+        function scrollToMenu() {
+            document.getElementById('seccion-menu').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        /**
+         * Abre y cierra modales (Horarios / Soporte)
+         */
+        function openModal(id) {
+            const modal = document.getElementById(id);
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeModal(id) {
+            const modal = document.getElementById(id);
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        /**
+         * Copia la dirección del puesto usando document.execCommand('copy')
+         */
+        function copyAddress() {
+            const address = "Calle 5ta Obrera, Colonia Zona Este #22566";
+            const tempInput = document.createElement('textarea');
+            tempInput.value = address;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            try {
+                document.execCommand('copy');
+                showToast('Dirección copiada al portapapeles', 'success');
+            } catch (err) {
+                showToast('No se pudo copiar la dirección', 'warning');
+            }
+            document.body.removeChild(tempInput);
+        }
+
+        /**
+         * Maneja el formulario de soporte
+         */
+        function submitSupportTicket(event) {
+            event.preventDefault();
+            const name = document.getElementById('support-name').value.trim();
+            document.getElementById('support-name').value = '';
+            document.getElementById('support-msg').value = '';
+            closeModal('modal-soporte');
+            showToast(`¡Gracias ${name}! Soporte recibió tu mensaje y te atenderá en breve.`, 'success');
+        }
+
+        function simulateWhatsApp() {
+            closeModal('modal-soporte');
+            showToast('Conectando con línea directa de atención del puesto...', 'info');
+        }
+
+        /**
+         * Sistema de notificaciones visuales (Toast) sin usar alert()
+         */
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const colors = {
+                success: 'bg-slate-900 text-white border-skyMockup',
+                warning: 'bg-badgeRed text-white border-slate-900',
+                info: 'bg-white text-slate-950 border-slate-900'
+            };
+
+            toast.className = `${colors[type] || colors.success} border-2 px-4 py-3 rounded-2xl shadow-xl font-bold text-xs sm:text-sm flex items-center gap-2.5 transition-all duration-300`;
+            toast.innerHTML = `
+                <i class="fa-solid ${type === 'warning' ? 'fa-circle-exclamation' : 'fa-circle-check'} text-skyMockup"></i>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 2800);
+        }
+
+        // Inicializar UI al cargar la página
+        window.addEventListener('DOMContentLoaded', () => {
+            updateCartUI();
+        });
+    </script>
+</body>
+</html>
